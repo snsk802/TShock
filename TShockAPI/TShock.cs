@@ -80,24 +80,17 @@ namespace TShockAPI
 		public static RestManager RestManager;
 		public static Utils Utils = Utils.Instance;
 		public static UpdateManager UpdateManager;
+		public static wlabconf Conf;
 		/// <summary>
 		/// Used for implementing REST Tokens prior to the REST system starting up.
 		/// </summary>
-		public static Dictionary<string, SecureRest.TokenData> RESTStartupTokens = new Dictionary<string, SecureRest.TokenData>();
-
 		/// <summary>
 		/// Called after TShock is initialized. Useful for plugins that needs hooks before tshock but also depend on tshock being loaded.
 		/// </summary>
-		public static event Action Initialized;
-
-		public override Version Version
-		{
-			get { return VersionNum; }
-		}
 
 		public override string Name
 		{
-			get { return "TShock"; }
+			get { return "willowsLAB TShock"; }
 		}
 
 		public override string Author
@@ -133,6 +126,7 @@ namespace TShockAPI
 			{
 				HandleCommandLine(Environment.GetCommandLineArgs());
 
+				Conf = new wlabconf();
 				if (Version.Major >= 4)
 					getTShockAscii();
 
@@ -224,6 +218,8 @@ namespace TShockAPI
 				{
 					throw new Exception("Invalid storage type");
 				}
+				
+				isLogged = new isLogged(DB);
 
 				Backups = new BackupManager(Path.Combine(SavePath, "backups"));
 				Backups.KeepFor = Config.BackupKeepFor;
@@ -238,6 +234,7 @@ namespace TShockAPI
 				TileBans = new TileManager(DB);
 				RememberedPos = new RememberedPosManager(DB);
 				CharacterDB = new CharacterManager(DB);
+				NickName = NickName(DB);
 				RestApi = new SecureRest(Netplay.serverListenIP, Config.RestApiPort);
 				RestApi.Port = Config.RestApiPort;
 				RestManager = new RestManager(RestApi);
@@ -359,8 +356,9 @@ namespace TShockAPI
 		}
 
 	    private void OnPlayerLogin(Hooks.PlayerPostLoginEventArgs args)
-	    {
-	        User u = Users.GetUserByName(args.Player.UserAccountName);
+		{
+			User u = Users.GetUserByName(args.player.UserAccountName);
+		
             List<String> KnownIps = new List<string>();
 	        if (!string.IsNullOrWhiteSpace(u.KnownIps))
 	        {
@@ -373,13 +371,27 @@ namespace TShockAPI
 	            if (KnownIps.Count == 100)
 	            {
 	                KnownIps.RemoveAt(0);
-	            }
-
+	            
+				}
                 KnownIps.Add(args.Player.IP);
 	        }
 
             u.KnownIps = JsonConvert.SerializeObject(KnownIps, Formatting.Indented);
-	        Users.UpdateLogin(u);
+	        
+			Users.UpdateLogin(u);
+			
+			try
+			{
+				args.Player.titlePrefixReload();
+			}
+			catch {} 
+			
+			try
+			{
+				Main.player[args.Player.TPlayer.whoAmi].name = args.Player.Name;
+				
+			}
+			catch {}
 	    }
 
 		private void OnPlayerPreLogin(Hooks.PlayerPreLoginEventArgs args)
@@ -763,7 +775,7 @@ namespace TShockAPI
 					
 					if (player.TileLiquidThreshold >= Config.TileLiquidThreshold)
 					{
-						player.Disable("Reached TileLiquid threshold");
+					//	player.Disable("Reached TileLiquid threshold");
 					}
 					if (player.TileLiquidThreshold > 0)
 					{
@@ -954,7 +966,7 @@ namespace TShockAPI
 			        DateTime exp;
 					if (!DateTime.TryParse(ban.Expiration, out exp))
 					{
-						player.Disconnect("You are banned forever: " + ban.Reason);
+						player.Disconnect("너님은 추방당했습니다. 다음과 같은 사유: " + ban.Reason);
 					}
 					else
 					{
@@ -994,8 +1006,46 @@ namespace TShockAPI
 		private void OnLeave(LeaveEventArgs args)
 		{
 			var tsplr = Players[args.Who];
-			Players[args.Who] = null;
+			players[args.Who] = null;
+			
+			int Onlineuser = 0;
+			StringBuilder sb = new StringBuilder();
+			foreach (var plr in TShock.Players)
+			{
+				if (plr == null)
+				{
+					continue;
+				}
+				if (plr.UserID == -1)
+				{
+					contiue;
+				}
+			}
 
+			try
+			{
+				sb.AppendLine(plr.TPlayer.name + "," + plr.UserID.ToString());
+				Onlineuser++;
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message.ToString());
+			}
+		}
+		File.WriteAllText(
+		Path.Combine(Directory.GetParent(Directory.GetParent(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).FullName.ToString()).FullName.ToString()).FullName.ToString(), "SERVERSET", "HOSTDIR", "onlineusers", Conf.channelname + "_users.txt")
+			, sb.ToString()
+			, Encoding.UTF8);
+		Console.WriteLine("온라인 유저 " + Onlineuser + " 명");
+		
+		if(Onlineuser == 0)
+		{
+			SaveManager.Instance.SaveWorld(False);
+			foreach (TSPlayer tsply in TShock.Players.Where(tsply => tsply !=null))
+			{
+				tsply.SaveServerCharacter();
+			}
+		}
 			if (tsplr != null && tsplr.ReceivedInfo)
 			{
 				if (!tsplr.SilentKickInProgress && tsplr.State >= 3)
