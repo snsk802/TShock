@@ -123,7 +123,7 @@ namespace TShockAPI
 			AllowServer = true;
 			CommandDelegate = cmd;
 			DoLog = true;
-			HelpText = "해당 명령어에 도움말이 존재하지 않습니다.";
+			HelpText = "No help available.";
             HelpDesc = null;
 			Names = new List<string>(names);
 			Permissions = new List<string>();
@@ -140,7 +140,7 @@ namespace TShockAPI
 			}
 			catch (Exception e)
 			{
-				ply.SendErrorMessage("커맨드 실행에 실패했습니다. 사유는 티쇽 로그를 확인해주세요.");
+				ply.SendErrorMessage("Command failed, check logs for more details.");
 				Log.Error(e.ToString());
 			}
 
@@ -387,15 +387,15 @@ namespace TShockAPI
 			});
 			#endregion
 			#region TP Commands
-			add(new Command(Home, "home", "집")
+			add(new Command(Permissions.home, Home, "home")
 			{
 				AllowServer = false,
-				HelpText = "당신을 당신의 집으로 이동할 수 있게 해줍니다."
+				HelpText = "Sends you to your spawn point."
 			});
-			add(new Command(Spawn, "spawn","스폰")
+			add(new Command(Permissions.spawn, Spawn, "spawn")
 			{
 				AllowServer = false,
-				HelpText = "당신을 월드의 스폰 포인트로 이동시킵니다."
+				HelpText = "Sends you to the world's spawn point."
 			});
 			add(new Command(Permissions.tp, TP, "tp")
 			{
@@ -560,7 +560,7 @@ namespace TShockAPI
 			{
 				HelpText = "Shows a command's aliases."
 			});
-			add(new Command(Help, "help", "도움말")
+			add(new Command(Help, "help")
 			{
 				HelpText = "Lists commands or gives help on them."
 			});
@@ -692,26 +692,26 @@ namespace TShockAPI
 			if (args.Player.LoginAttempts > TShock.Config.MaximumLoginAttempts && (TShock.Config.MaximumLoginAttempts != -1))
 			{
 				Log.Warn(String.Format("{0} ({1}) had {2} or more invalid login attempts and was kicked automatically.",
-					args.Player.IP, args.Player.TPlayer.name, TShock.Config.MaximumLoginAttempts));
+					args.Player.IP, args.Player.Name, TShock.Config.MaximumLoginAttempts));
 				TShock.Utils.Kick(args.Player, "Too many invalid login attempts.");
 				return;
 			}
             
-			User user = TShock.Users.GetUserByName(args.Player.TPlayer.name);
+			User user = TShock.Users.GetUserByName(args.Player.Name);
 			string encrPass = "";
 			bool usingUUID = false;
 			if (args.Parameters.Count == 0 && !TShock.Config.DisableUUIDLogin)
 			{
-				if (Hooks.PlayerHooks.OnPlayerPreLogin(args.Player, args.Player.TPlayer.name, ""))
+				if (Hooks.PlayerHooks.OnPlayerPreLogin(args.Player, args.Player.Name, ""))
 					return;
-				user = TShock.Users.GetUserByName(args.Player.TPlayer.name);
+				user = TShock.Users.GetUserByName(args.Player.Name);
 				usingUUID = true;
 			}
 			else if (args.Parameters.Count == 1)
 			{
-				if (Hooks.PlayerHooks.OnPlayerPreLogin(args.Player, args.Player.TPlayer.name, args.Parameters[0]))
+				if (Hooks.PlayerHooks.OnPlayerPreLogin(args.Player, args.Player.Name, args.Parameters[0]))
 					return;
-				user = TShock.Users.GetUserByName(args.Player.TPlayer.name);
+				user = TShock.Users.GetUserByName(args.Player.Name);
 				encrPass = TShock.Utils.HashPassword(args.Parameters[0]);
 			}
 			else if (args.Parameters.Count == 2 && TShock.Config.AllowLoginAnyUsername)
@@ -771,35 +771,28 @@ namespace TShockAPI
 					args.Player.UserID = TShock.Users.GetUserID(args.Player.UserAccountName);
 					args.Player.IsLoggedIn = true;
 					args.Player.IgnoreActionsForInventory = "none";
-                    if (TShock.Users.GetTESTID(user))
-                    {
-                        Console.WriteLine("DEVEL:사용자명" + user.Name + " 인증 실패. 다중 접속 가능성 있음.");
-                        args.Player.Disconnect("계정을 찾을 수 없습니다. ");
-                    }
-                    else
-                    {
-                        if (!args.Player.IgnoreActionsForClearingTrashCan && Main.ServerSideCharacter)
-                        {
-                            args.Player.PlayerData.CopyCharacter(args.Player);
-                            TShock.CharacterDB.InsertPlayerData(args.Player);
-                        }
-                        args.Player.SendSuccessMessage("유저 " + user.Name + " 성공적으로 승인.");
-                        //Main.player[args.TPlayer.whoAmi].realname = user.Name;
 
-                        Log.ConsoleInfo(args.Player.TPlayer.name + " authenticated successfully as user: " + user.Name + ".");
-                        if ((args.Player.LoginHarassed) && (TShock.Config.RememberLeavePos))
-                        {
-                            if (TShock.RememberedPos.GetLeavePos(args.Player.TPlayer.name, args.Player.IP) != Vector2.Zero)
-                            {
-                                Vector2 pos = TShock.RememberedPos.GetLeavePos(args.Player.TPlayer.name, args.Player.IP);
-                                args.Player.Teleport((int)pos.X * 16, (int)pos.Y * 16);
-                            }
-                            args.Player.LoginHarassed = false;
+					if (!args.Player.IgnoreActionsForClearingTrashCan && Main.ServerSideCharacter)
+					{
+						args.Player.PlayerData.CopyCharacter(args.Player);
+						TShock.CharacterDB.InsertPlayerData(args.Player);
+					}
+					args.Player.SendSuccessMessage("Authenticated as " + user.Name + " successfully.");
 
-                        }
-                        TShock.Users.SetUserUUID(user, args.Player.UUID);
-                        Hooks.PlayerHooks.OnPlayerPostLogin(args.Player);
-                    }
+					Log.ConsoleInfo(args.Player.Name + " authenticated successfully as user: " + user.Name + ".");
+					if ((args.Player.LoginHarassed) && (TShock.Config.RememberLeavePos))
+					{
+						if (TShock.RememberedPos.GetLeavePos(args.Player.Name, args.Player.IP) != Vector2.Zero)
+						{
+							Vector2 pos = TShock.RememberedPos.GetLeavePos(args.Player.Name, args.Player.IP);
+							args.Player.Teleport((int) pos.X*16, (int) pos.Y*16);
+						}
+						args.Player.LoginHarassed = false;
+
+					}
+					TShock.Users.SetUserUUID(user, args.Player.UUID);
+
+					Hooks.PlayerHooks.OnPlayerPostLogin(args.Player);
 				}
 				else
 				{
@@ -834,18 +827,18 @@ namespace TShockAPI
 					{
 						args.Player.SendSuccessMessage("You changed your password!");
 						TShock.Users.SetUserPassword(user, args.Parameters[1]); // SetUserPassword will hash it for you.
-						Log.ConsoleInfo(args.Player.IP + " named " + args.Player.TPlayer.name + " changed the password of account " + user.Name + ".");
+						Log.ConsoleInfo(args.Player.IP + " named " + args.Player.Name + " changed the password of account " + user.Name + ".");
 					}
 					else
 					{
 						args.Player.SendErrorMessage("You failed to change your password!");
-						Log.ConsoleError(args.Player.IP + " named " + args.Player.TPlayer.name + " failed to change password for account: " +
+						Log.ConsoleError(args.Player.IP + " named " + args.Player.Name + " failed to change password for account: " +
 										 user.Name + ".");
 					}
 				}
 				else
 				{
-					args.Player.SendErrorMessage("Not logged in or 잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /password <oldpassword> <newpassword>");
+					args.Player.SendErrorMessage("Not logged in or invalid syntax! Proper syntax: /password <oldpassword> <newpassword>");
 				}
 			}
 			catch (UserManagerException ex)
@@ -863,7 +856,7 @@ namespace TShockAPI
 
 				if (args.Parameters.Count == 1)
 				{
-					user.Name = args.Player.TPlayer.name;
+					user.Name = args.Player.Name;
 					user.Password = args.Parameters[0];
 				}
 				else if (args.Parameters.Count == 2 && TShock.Config.AllowRegisterAnyUsername)
@@ -873,38 +866,26 @@ namespace TShockAPI
 				}
 				else
 				{
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /register <password>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /register <password>");
 					return;
 				}
 
 				user.Group = TShock.Config.DefaultRegistrationGroupName; // FIXME -- we should get this from the DB. --Why?
 				user.UUID = args.Player.UUID;
 
-                if (TShock.Users.GetUserByNameforTEST(user) != false)
-                {
-                    if (TShock.Users.GetUserByName(user.Name) == null && user.Name != TSServerPlayer.AccountName) // Cheap way of checking for existance of a user
-                    {
-                        args.Player.SendSuccessMessage("Account \"{0}\" has been registered.", user.Name);
-                        TShock.Users.AddUser(user);
-                        TShock.CharacterDB.SeedInitialData(TShock.Users.GetUser(user));
-                        Log.ConsoleInfo("{0} registered an account: \"{1}\".", args.Player.TPlayer.name, user.Name);
-                    }
-                    else
-                    {
-                        args.Player.SendErrorMessage("Account " + user.Name + " has already been registered.");
-                        Log.ConsoleInfo(args.Player.TPlayer.name + " failed to register an existing account: " + user.Name);
-                    }
-                }
-                else
-                {
-                    args.Player.SendErrorMessage(user.Name + " 아이디로 SrinnX에 로그인 하는 데 실패하였습니다.");
-                    args.Player.SendErrorMessage("- 아이디나 비밀번호가 틀렸습니다.");
-                    args.Player.SendErrorMessage("- 사이트의 게임 데이터를 갱신하지 않았습니다.");
-                    args.Player.SendErrorMessage("- 테라리아 게임을 소유하고 있지 않습니다.");
-                    args.Player.SendErrorMessage("- 사이트의 아이디(접속시 사용한 아이디)로 캐릭터 이름을 맞춰오지 않았습니다.");
-                    args.Player.SendErrorMessage("- 등록을 먼저 하지 않았습니다. (/register 사이트비밀번호 로 등록해주세요)");
-                    args.Player.SendErrorMessage("그 이외의 경우 사이트 마스터에게 문의하시기 바랍니다.");
-                }
+                if (TShock.Users.GetUserByName(user.Name) == null && user.Name != TSServerPlayer.AccountName) // Cheap way of checking for existance of a user
+				{
+					args.Player.SendSuccessMessage("Account \"{0}\" has been registered.", user.Name);
+					args.Player.SendSuccessMessage("Your password is {0}.", user.Password);
+					TShock.Users.AddUser(user);
+					TShock.CharacterDB.SeedInitialData(TShock.Users.GetUser(user));
+					Log.ConsoleInfo("{0} registered an account: \"{1}\".", args.Player.Name, user.Name);
+				}
+				else
+				{
+					args.Player.SendErrorMessage("Account " + user.Name + " has already been registered.");
+					Log.ConsoleInfo(args.Player.Name + " failed to register an existing account: " + user.Name);
+				}
 			}
 			catch (UserManagerException ex)
 			{
@@ -940,7 +921,7 @@ namespace TShockAPI
 						TShock.Users.AddUser(user);
 						TShock.CharacterDB.SeedInitialData(TShock.Users.GetUser(user));
 						args.Player.SendSuccessMessage("Account " + user.Name + " has been added to group " + user.Group + "!");
-						Log.ConsoleInfo(args.Player.TPlayer.name + " added Account " + user.Name + " to group " + user.Group);
+						Log.ConsoleInfo(args.Player.Name + " added Account " + user.Name + " to group " + user.Group);
 					}
 					catch (GroupNotExistsException e)
 					{
@@ -958,7 +939,7 @@ namespace TShockAPI
 				}
 				else
 				{
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /user help.");
+					args.Player.SendErrorMessage("Invalid syntax. Try /user help.");
 				}
 			}
 				// User deletion requires a username
@@ -971,7 +952,7 @@ namespace TShockAPI
 				{
 					TShock.Users.RemoveUser(user);
 					args.Player.SendSuccessMessage("Account removed successfully.");
-					Log.ConsoleInfo(args.Player.TPlayer.name + " successfully deleted account: " + args.Parameters[1] + ".");
+					Log.ConsoleInfo(args.Player.Name + " successfully deleted account: " + args.Parameters[1] + ".");
 				}
 				catch (UserNotExistException e)
 				{
@@ -995,7 +976,7 @@ namespace TShockAPI
 					try
 					{
 						TShock.Users.SetUserPassword(user, args.Parameters[2]);
-						Log.ConsoleInfo(args.Player.TPlayer.name + " changed the password of account " + user.Name);
+						Log.ConsoleInfo(args.Player.Name + " changed the password of account " + user.Name);
 						args.Player.SendSuccessMessage("Password change succeeded for " + user.Name + ".");
 					}
 					catch (UserNotExistException e)
@@ -1024,7 +1005,7 @@ namespace TShockAPI
 					try
 					{
 						TShock.Users.SetUserGroup(user, args.Parameters[2]);
-						Log.ConsoleInfo(args.Player.TPlayer.name + " changed account " + user.Name + " to group " + args.Parameters[2] + ".");
+						Log.ConsoleInfo(args.Player.Name + " changed account " + user.Name + " to group " + args.Parameters[2] + ".");
 						args.Player.SendSuccessMessage("Account " + user.Name + " has been changed to group " + args.Parameters[2] + "!");
 					}
 					catch (GroupNotExistsException e)
@@ -1089,7 +1070,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /userinfo <player>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /userinfo <player>");
 				return;
 			}
 
@@ -1113,7 +1094,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /kick <player> [reason]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /kick <player> [reason]");
 				return;
 			}
 			if (args.Parameters[0].Length == 0)
@@ -1137,7 +1118,7 @@ namespace TShockAPI
 				string reason = args.Parameters.Count > 1
 									? String.Join(" ", args.Parameters.GetRange(1, args.Parameters.Count - 1))
 									: "Misbehaviour.";
-				if (!TShock.Utils.Kick(players[0], reason, !args.Player.RealPlayer, false, args.Player.TPlayer.name))
+				if (!TShock.Utils.Kick(players[0], reason, !args.Player.RealPlayer, false, args.Player.Name))
 				{
 					args.Player.SendErrorMessage("You can't kick another admin!");
 				}
@@ -1154,7 +1135,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /ban add <player> [reason]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /ban add <player> [reason]");
 							return;
 						}
 
@@ -1175,7 +1156,7 @@ namespace TShockAPI
 									if (String.IsNullOrWhiteSpace(args.Player.UserAccountName))
 										TSPlayer.All.SendInfoMessage("{0} was {1}banned for '{2}'.", user.Name, force ? "force " : "", reason);
 									else
-										TSPlayer.All.SendInfoMessage("{0} {1}banned {2} for '{3}'.", args.Player.TPlayer.name, force ? "force " : "", user.Name, reason);
+										TSPlayer.All.SendInfoMessage("{0} {1}banned {2} for '{3}'.", args.Player.Name, force ? "force " : "", user.Name, reason);
 								}
 							}
 							else
@@ -1196,7 +1177,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /ban addip <ip> [reason]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /ban addip <ip> [reason]");
 							return;
 						}
 
@@ -1214,7 +1195,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /ban addtemp <player> <time> [reason]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /ban addtemp <player> <time> [reason]");
 							return;
 						}
 
@@ -1246,7 +1227,7 @@ namespace TShockAPI
 									if (String.IsNullOrWhiteSpace(args.Player.UserAccountName))
 										TSPlayer.All.SendInfoMessage("{0} was {1}banned for '{2}'.", user.Name, force ? "force " : "", reason);
 									else
-										TSPlayer.All.SendInfoMessage("{0} {1}banned {2} for '{3}'.", args.Player.TPlayer.name, force ? "force " : "", user.Name, reason);
+										TSPlayer.All.SendInfoMessage("{0} {1}banned {2} for '{3}'.", args.Player.Name, force ? "force " : "", user.Name, reason);
 								}
 							}
 							else
@@ -1263,12 +1244,12 @@ namespace TShockAPI
 							}
 
 							if (TShock.Bans.AddBan(players[0].IP, players[0].Name, players[0].UUID, reason,
-								false, args.Player.TPlayer.name, DateTime.UtcNow.AddSeconds(time).ToString("s")))
+								false, args.Player.Name, DateTime.UtcNow.AddSeconds(time).ToString("s")))
 							{
 								players[0].Disconnect(String.Format("Banned: {0}", reason));
 								string verb = args.Player.RealPlayer ? "force " : "";
 								if (args.Player.RealPlayer)
-									TSPlayer.All.SendSuccessMessage("{0} {1}banned {2} for '{3}'", args.Player.TPlayer.name, verb, players[0].Name, reason);
+									TSPlayer.All.SendSuccessMessage("{0} {1}banned {2} for '{3}'", args.Player.Name, verb, players[0].Name, reason);
 								else
 									TSPlayer.All.SendSuccessMessage("{0} was {1}banned for '{2}'", players[0].Name, verb, reason);
 							}
@@ -1300,7 +1281,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /ban delip <ip>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /ban delip <ip>");
 							return;
 						}
 
@@ -1486,14 +1467,14 @@ namespace TShockAPI
 		{
 			TShock.Config.ForceHalloween = !TShock.Config.ForceHalloween;
 			Main.checkHalloween();
-			TSPlayer.All.SendInfoMessage("{0} {1}abled halloween mode!", args.Player.TPlayer.name, (TShock.Config.ForceHalloween ? "en" : "dis"));
+			TSPlayer.All.SendInfoMessage("{0} {1}abled halloween mode!", args.Player.Name, (TShock.Config.ForceHalloween ? "en" : "dis"));
 		}
 
 		private static void ForceXmas(CommandArgs args)
 		{
 			TShock.Config.ForceXmas = !TShock.Config.ForceXmas;
 			Main.checkXMas();
-			TSPlayer.All.SendInfoMessage("{0} {1}abled Christmas mode!", args.Player.TPlayer.name, (TShock.Config.ForceXmas ? "en" : "dis"));
+			TSPlayer.All.SendInfoMessage("{0} {1}abled Christmas mode!", args.Player.Name, (TShock.Config.ForceXmas ? "en" : "dis"));
 		}
 
 		private static void TempGroup(CommandArgs args)
@@ -1668,19 +1649,19 @@ namespace TShockAPI
 		private static void Fullmoon(CommandArgs args)
 		{
 			TSPlayer.Server.SetFullMoon();
-			TSPlayer.All.SendInfoMessage("{0} started a full moon.", args.Player.TPlayer.name);
+			TSPlayer.All.SendInfoMessage("{0} started a full moon.", args.Player.Name);
 		}
 
 		private static void Bloodmoon(CommandArgs args)
 		{
 			TSPlayer.Server.SetBloodMoon(!Main.bloodMoon);
-			TSPlayer.All.SendInfoMessage("{0} {1}ed a blood moon.", args.Player.TPlayer.name, Main.bloodMoon ? "start" : "stopp");
+			TSPlayer.All.SendInfoMessage("{0} {1}ed a blood moon.", args.Player.Name, Main.bloodMoon ? "start" : "stopp");
 		}
 
 		private static void Eclipse(CommandArgs args)
 		{
 			TSPlayer.Server.SetEclipse(!Main.eclipse);
-			TSPlayer.All.SendInfoMessage("{0} {1}ed an eclipse.", args.Player.TPlayer.name, Main.eclipse ? "start" : "stopp");
+			TSPlayer.All.SendInfoMessage("{0} {1}ed an eclipse.", args.Player.Name, Main.eclipse ? "start" : "stopp");
 		}
 		
 		private static void Invade(CommandArgs args)
@@ -1689,7 +1670,7 @@ namespace TShockAPI
 			{
 				if (args.Parameters.Count != 1)
 				{
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /invade <invasion type>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /invade <invasion type>");
 					return;
 				}
 
@@ -1698,25 +1679,25 @@ namespace TShockAPI
 					case "goblin":
 					case "goblins":
 					case "goblin army":
-						TSPlayer.All.SendInfoMessage("{0} has started a goblin army invasion.", args.Player.TPlayer.name);
+						TSPlayer.All.SendInfoMessage("{0} has started a goblin army invasion.", args.Player.Name);
 						TShock.StartInvasion(1);
 						break;
 					case "snowman":
 					case "snowmen":
 					case "snow legion":
-						TSPlayer.All.SendInfoMessage("{0} has started a snow legion invasion.", args.Player.TPlayer.name);
+						TSPlayer.All.SendInfoMessage("{0} has started a snow legion invasion.", args.Player.Name);
 						TShock.StartInvasion(2);
 						break;
 					case "pirate":
 					case "pirates":
-						TSPlayer.All.SendInfoMessage("{0} has started a pirate invasion.", args.Player.TPlayer.name);
+						TSPlayer.All.SendInfoMessage("{0} has started a pirate invasion.", args.Player.Name);
 						TShock.StartInvasion(3);
 						break;
 				}
 			}
 			else
 			{
-                TSPlayer.All.SendInfoMessage("{0} has ended the invasion.", args.Player.TPlayer.name);
+                TSPlayer.All.SendInfoMessage("{0} has ended the invasion.", args.Player.Name);
 				Main.invasionSize = 0;
 			}
 		}
@@ -1737,7 +1718,7 @@ namespace TShockAPI
 			Main.bloodMoon = false;
 			NPC.waveKills = 0f;
 			NPC.waveCount = wave;
-			TSPlayer.All.SendInfoMessage("{0} started the pumpkin moon at wave {1}!", args.Player.TPlayer.name, wave);
+			TSPlayer.All.SendInfoMessage("{0} started the pumpkin moon at wave {1}!", args.Player.Name, wave);
 		}
 
 		private static void FrostMoon(CommandArgs args)
@@ -1756,7 +1737,7 @@ namespace TShockAPI
 			Main.bloodMoon = false;
 			NPC.waveKills = 0f;
 			NPC.waveCount = wave;
-			TSPlayer.All.SendInfoMessage("{0} started the frost moon at wave {1}!", args.Player.TPlayer.name, wave);
+			TSPlayer.All.SendInfoMessage("{0} started the frost moon at wave {1}!", args.Player.Name, wave);
 		}
 
 		private static void ClearAnglerQuests(CommandArgs args)
@@ -1808,7 +1789,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1 || args.Parameters.Count > 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /spawnboss <boss type> [amount]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /spawnboss <boss type> [amount]");
 				return;
 			}
 
@@ -1831,76 +1812,76 @@ namespace TShockAPI
 						npc.SetDefaults(i);
 						TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
 					}
-					TSPlayer.All.SendSuccessMessage("{0} has spawned all bosses {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned all bosses {1} time(s).", args.Player.Name, amount);
 					return;
 				case "brain":
 				case "brain of cthulhu":
 					npc.SetDefaults(266);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Brain of Cthulhu {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Brain of Cthulhu {1} time(s).", args.Player.Name, amount);
 					return;
 				case "destroyer":
 					npc.SetDefaults(134);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Destroyer {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Destroyer {1} time(s).", args.Player.Name, amount);
 					return;
 				case "duke":
 				case "duke fishron":
 				case "fishron":
 					npc.SetDefaults(370);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Duke Fishron {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Duke Fishron {1} time(s).", args.Player.Name, amount);
 					return;
 				case "eater":
 				case "eater of worlds":
 					npc.SetDefaults(13);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Eater of Worlds {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Eater of Worlds {1} time(s).", args.Player.Name, amount);
 					return;
 				case "eye":
 				case "eye of cthulhu":
 					npc.SetDefaults(4);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Eye of Cthulhu {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Eye of Cthulhu {1} time(s).", args.Player.Name, amount);
 					return;
 				case "golem":
 					npc.SetDefaults(245);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Golem {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Golem {1} time(s).", args.Player.Name, amount);
 					return;
 				case "king":
 				case "king slime":
 					npc.SetDefaults(50);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned King Slime {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned King Slime {1} time(s).", args.Player.Name, amount);
 					return;
 				case "plantera":
 					npc.SetDefaults(262);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Plantera {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Plantera {1} time(s).", args.Player.Name, amount);
 					return;
 				case "prime":
 				case "skeletron prime":
 					npc.SetDefaults(127);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Skeletron Prime {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Skeletron Prime {1} time(s).", args.Player.Name, amount);
 					return;
 				case "queen":
 				case "queen bee":
 					npc.SetDefaults(222);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Queen Bee {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Queen Bee {1} time(s).", args.Player.Name, amount);
 					return;
 				case "skeletron":
 					npc.SetDefaults(35);
 					TSPlayer.Server.SetTime(false, 0.0);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Skeletron {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Skeletron {1} time(s).", args.Player.Name, amount);
 					return;
 				case "twins":
 					TSPlayer.Server.SetTime(false, 0.0);
@@ -1908,7 +1889,7 @@ namespace TShockAPI
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
 					npc.SetDefaults(126);
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Twins {1} time(s).", args.Player.TPlayer.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Twins {1} time(s).", args.Player.Name, amount);
 					return;
 				case "wof":
 				case "wall of flesh":
@@ -1923,7 +1904,7 @@ namespace TShockAPI
 						return;
 					}
 					NPC.SpawnWOF(new Vector2(args.Player.X, args.Player.Y));
-					TSPlayer.All.SendSuccessMessage("{0} has spawned the Wall of Flesh.", args.Player.TPlayer.name);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned the Wall of Flesh.", args.Player.Name);
 					return;
 				default:
 					args.Player.SendErrorMessage("Invalid boss type!");
@@ -1935,7 +1916,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1 || args.Parameters.Count > 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /spawnmob <mob type> [amount]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /spawnmob <mob type> [amount]");
 				return;
 			}
 			if (args.Parameters[0].Length == 0)
@@ -1947,7 +1928,7 @@ namespace TShockAPI
 			int amount = 1;
 			if (args.Parameters.Count == 2 && !int.TryParse(args.Parameters[1], out amount))
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /spawnmob <mob type> [amount]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /spawnmob <mob type> [amount]");
 				return;
 			}
 
@@ -1968,7 +1949,7 @@ namespace TShockAPI
 				if (npc.type >= 1 && npc.type < Main.maxNPCTypes && npc.type != 113)
 				{
 					TSPlayer.Server.SpawnNPC(npc.type, npc.name, amount, args.Player.TileX, args.Player.TileY, 50, 20);
-					TSPlayer.All.SendSuccessMessage("{0} has spawned {1} {2} time(s).", args.Player.TPlayer.name, npc.name, amount);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned {1} {2} time(s).", args.Player.Name, npc.name, amount);
 				}
 				else if (npc.type == 113)
 				{
@@ -1978,7 +1959,7 @@ namespace TShockAPI
 						return;
 					}
 					NPC.SpawnWOF(new Vector2(args.Player.X, args.Player.Y));
-					TSPlayer.All.SendSuccessMessage("{0} has spawned Wall of Flesh!", args.Player.TPlayer.name);
+					TSPlayer.All.SendSuccessMessage("{0} has spawned Wall of Flesh!", args.Player.Name);
 				}
 				else
 				{
@@ -1994,13 +1975,13 @@ namespace TShockAPI
 		private static void Home(CommandArgs args)
 		{
 			args.Player.Spawn();
-			args.Player.SendSuccessMessage("본인의 부활 지점으로 이동했습니다.");
+			args.Player.SendSuccessMessage("Teleported to your spawnpoint.");
 		}
 
 		private static void Spawn(CommandArgs args)
 		{
 			if (args.Player.Teleport(Main.spawnTileX*16, (Main.spawnTileY*16) -48))
-				args.Player.SendSuccessMessage("맵의 기본 부활 지점으로 이동했습니다.");
+				args.Player.SendSuccessMessage("Teleported to the map's spawnpoint.");
 		}
 
 		private static void TP(CommandArgs args)
@@ -2008,9 +1989,9 @@ namespace TShockAPI
 			if (args.Parameters.Count != 1 && args.Parameters.Count != 2)
 			{
 				if (args.Player.Group.HasPermission(Permissions.tpothers))
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tp <player> [player 2]");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tp <player> [player 2]");
 				else
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tp <player>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tp <player>");
 				return;
 			}
 
@@ -2033,7 +2014,7 @@ namespace TShockAPI
 					{
 						args.Player.SendSuccessMessage("Teleported to {0}.", target.Name);
 						if (!args.Player.Group.HasPermission(Permissions.tpsilent))
-							target.SendInfoMessage("{0} teleported to you.", args.Player.TPlayer.name);
+							target.SendInfoMessage("{0} teleported to you.", args.Player.Name);
 					}
 				}
 			}
@@ -2074,14 +2055,14 @@ namespace TShockAPI
 									if (args.Player.Group.HasPermission(Permissions.tpsilent))
 										source.SendSuccessMessage("You were teleported to {0}.", target.Name);
 									else
-										source.SendSuccessMessage("{0} teleported you to {1}.", args.Player.TPlayer.name, target.Name);
+										source.SendSuccessMessage("{0} teleported you to {1}.", args.Player.Name, target.Name);
 								}
 								if (args.Player != target)
 								{
 									if (args.Player.Group.HasPermission(Permissions.tpsilent))
 										target.SendInfoMessage("{0} was teleported to you.", source.Name);
 									if (!args.Player.Group.HasPermission(Permissions.tpsilent))
-										target.SendInfoMessage("{0} teleported {1} to you.", args.Player.TPlayer.name, source.Name);
+										target.SendInfoMessage("{0} teleported {1} to you.", args.Player.Name, source.Name);
 								}
 							}
 						}
@@ -2114,14 +2095,14 @@ namespace TShockAPI
 							if (args.Player.Group.HasPermission(Permissions.tpsilent))
 								source.SendSuccessMessage("You were teleported to {0}.", target.Name);
 							else
-								source.SendSuccessMessage("{0} teleported you to {1}.", args.Player.TPlayer.name, target.Name);
+								source.SendSuccessMessage("{0} teleported you to {1}.", args.Player.Name, target.Name);
 						}
 						if (args.Player != target)
 						{
 							if (args.Player.Group.HasPermission(Permissions.tpsilent))
 								target.SendInfoMessage("{0} was teleported to you.", source.Name);
 							if (!args.Player.Group.HasPermission(Permissions.tpsilent))
-								target.SendInfoMessage("{0} teleported {1} to you.", args.Player.TPlayer.name, source.Name);
+								target.SendInfoMessage("{0} teleported {1} to you.", args.Player.Name, source.Name);
 						}
 					}
 				}
@@ -2133,9 +2114,9 @@ namespace TShockAPI
 			if (args.Parameters.Count < 1)
 			{
 				if (args.Player.Group.HasPermission(Permissions.tpallothers))
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tphere <player|*>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tphere <player|*>");
 				else
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tphere <player>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tphere <player>");
 				return;
 			}
 
@@ -2155,7 +2136,7 @@ namespace TShockAPI
 						if (Main.player[i].active && (Main.player[i] != args.TPlayer))
 						{
 							if (TShock.Players[i].Teleport(args.TPlayer.position.X, args.TPlayer.position.Y))
-								TShock.Players[i].SendSuccessMessage(String.Format("You were teleported to {0}.", args.Player.TPlayer.name));
+								TShock.Players[i].SendSuccessMessage(String.Format("You were teleported to {0}.", args.Player.Name));
 						}
 					}
 					args.Player.SendSuccessMessage("Teleported everyone to yourself.");
@@ -2170,7 +2151,7 @@ namespace TShockAPI
 				var plr = players[0];
 				if (plr.Teleport(args.TPlayer.position.X, args.TPlayer.position.Y))
 				{
-					plr.SendInfoMessage("You were teleported to {0}.", args.Player.TPlayer.name);
+					plr.SendInfoMessage("You were teleported to {0}.", args.Player.Name);
 					args.Player.SendSuccessMessage("Teleported {0} to yourself.", plr.Name);
 				}
 			}
@@ -2180,7 +2161,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tpnpc <NPC>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tpnpc <NPC>");
 				return;
 			}
 
@@ -2217,7 +2198,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tppos <tile x> <tile y>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tppos <tile x> <tile y>");
 				return;
 			}
 
@@ -2252,7 +2233,7 @@ namespace TShockAPI
             {
                 if (hasManageWarpPermission)
                 {
-                    args.Player.SendInfoMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp [command] [arguments]");
+                    args.Player.SendInfoMessage("Invalid syntax! Proper syntax: /warp [command] [arguments]");
                     args.Player.SendInfoMessage("Commands: add, del, hide, list, send, [warpname]");
                     args.Player.SendInfoMessage("Arguments: add [warp name], del [warp name], list [page]");
                     args.Player.SendInfoMessage("Arguments: send [player] [warp name], hide [warp name] [Enable(true/false)]");
@@ -2261,7 +2242,7 @@ namespace TShockAPI
                 }
                 else
                 {
-                    args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp [name] or /warp list <page>");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp [name] or /warp list <page>");
                     return;
                 }
             }
@@ -2304,7 +2285,7 @@ namespace TShockAPI
                     }
                 }
                 else
-                    args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp add [name]");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp add [name]");
                 #endregion
             }
             else if (args.Parameters[0].ToLower() == "del" && hasManageWarpPermission)
@@ -2321,7 +2302,7 @@ namespace TShockAPI
 						args.Player.SendErrorMessage("Could not find the specified warp.");
                 }
                 else
-                    args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp del [name]");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp del [name]");
                 #endregion
             }
             else if (args.Parameters[0].ToLower() == "hide" && hasManageWarpPermission)
@@ -2344,10 +2325,10 @@ namespace TShockAPI
                             args.Player.SendErrorMessage("Could not find specified warp.");
                     }
                     else
-                        args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp hide [name] <true/false>");
+                        args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp hide [name] <true/false>");
                 }
                 else
-                    args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp hide [name] <true/false>");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp hide [name] <true/false>");
                 #endregion
             }
             else if (args.Parameters[0].ToLower() == "send" && args.Player.Group.HasPermission(Permissions.tpothers))
@@ -2355,7 +2336,7 @@ namespace TShockAPI
                 #region Warp send
                 if (args.Parameters.Count < 3)
                 {
-                    args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /warp send [player] [warpname]");
+                    args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /warp send [player] [warpname]");
                     return;
                 }
 
@@ -2378,7 +2359,7 @@ namespace TShockAPI
 				{
 					if (plr.Teleport(warp.Position.X * 16, warp.Position.Y * 16))
 					{
-						plr.SendSuccessMessage(String.Format("{0} warped you to {1}.", args.Player.TPlayer.name, warpName));
+						plr.SendSuccessMessage(String.Format("{0} warped you to {1}.", args.Player.Name, warpName));
 						args.Player.SendSuccessMessage(String.Format("You warped {0} to {1}.", plr.Name, warpName));
 					}
 				}
@@ -2419,7 +2400,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group add <group name> [permissions]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group add <group name> [permissions]");
 							return;
 						}
 
@@ -2447,7 +2428,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group addperm <group name> <permissions...>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group addperm <group name> <permissions...>");
 							return;
 						}
 
@@ -2514,7 +2495,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group parent <group name> [new parent group name]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group parent <group name> [new parent group name]");
 							return;
 						}
 
@@ -2564,7 +2545,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group suffix <group name> [new suffix]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group suffix <group name> [new suffix]");
 							return;
 						}
 
@@ -2609,7 +2590,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group prefix <group name> [new prefix]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group prefix <group name> [new prefix]");
 							return;
 						}
 
@@ -2654,7 +2635,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 2 || args.Parameters.Count > 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group color <group name> [new color(000,000,000)]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group color <group name> [new color(000,000,000)]");
 							return;
 						}
 
@@ -2704,7 +2685,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group del <group name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group del <group name>");
 							return;
 						}
 
@@ -2728,7 +2709,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count < 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group delperm <group name> <permissions...>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group delperm <group name> <permissions...>");
 							return;
 						}
 
@@ -2781,7 +2762,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count == 1)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /group listperm <group name> [page]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /group listperm <group name> [page]");
 							return;
 						}
 						int pageNumber;
@@ -2822,7 +2803,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /itemban add <item name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /itemban add <item name>");
 							return;
 						}
 
@@ -2848,7 +2829,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /itemban allow <item name> <group name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /itemban allow <item name> <group name>");
 							return;
 						}
 
@@ -2893,7 +2874,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /itemban del <item name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /itemban del <item name>");
 							return;
 						}
 
@@ -2919,7 +2900,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /itemban disallow <item name> <group name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /itemban disallow <item name> <group name>");
 							return;
 						}
 
@@ -3019,7 +3000,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /projban add <proj id>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /projban add <proj id>");
 							return;
 						}
 						short id;
@@ -3038,7 +3019,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /projban allow <id> <group>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /projban allow <id> <group>");
 							return;
 						}
 
@@ -3075,7 +3056,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /projban del <id>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /projban del <id>");
 							return;
 						}
 
@@ -3096,7 +3077,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /projban disallow <id> <group name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /projban disallow <id> <group name>");
 							return;
 						}
 
@@ -3188,7 +3169,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tileban add <tile id>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tileban add <tile id>");
 							return;
 						}
 						short id;
@@ -3207,7 +3188,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tileban allow <id> <group>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tileban allow <id> <group>");
 							return;
 						}
 
@@ -3244,7 +3225,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 2)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tileban del <id>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tileban del <id>");
 							return;
 						}
 
@@ -3265,7 +3246,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count != 3)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /tileban disallow <id> <group name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tileban disallow <id> <group name>");
 							return;
 						}
 
@@ -3368,7 +3349,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /password \"<new password>\"");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /password \"<new password>\"");
 				return;
 			}
 			string passwd = args.Parameters[0];
@@ -3408,7 +3389,7 @@ namespace TShockAPI
 			if (String.Equals(args.Parameters[0], "default", StringComparison.CurrentCultureIgnoreCase))
 			{
 				TShock.Config.DefaultMaximumSpawns = NPC.defaultMaxSpawns = 5;
-				TSPlayer.All.SendInfoMessage("{0} changed the maximum spawns to 5.", args.Player.TPlayer.name);
+				TSPlayer.All.SendInfoMessage("{0} changed the maximum spawns to 5.", args.Player.Name);
 				return;
 			}
 
@@ -3420,7 +3401,7 @@ namespace TShockAPI
 			}
 
 			TShock.Config.DefaultMaximumSpawns = NPC.defaultMaxSpawns = maxSpawns;
-			TSPlayer.All.SendInfoMessage("{0} changed the maximum spawns to {1}.", args.Player.TPlayer.name, maxSpawns);
+			TSPlayer.All.SendInfoMessage("{0} changed the maximum spawns to {1}.", args.Player.Name, maxSpawns);
 		}
 
 		private static void SpawnRate(CommandArgs args)
@@ -3434,7 +3415,7 @@ namespace TShockAPI
 			if (String.Equals(args.Parameters[0], "default", StringComparison.CurrentCultureIgnoreCase))
 			{
 				TShock.Config.DefaultSpawnRate = NPC.defaultSpawnRate = 600;
-				TSPlayer.All.SendInfoMessage("{0} changed the spawn rate to 600.", args.Player.TPlayer.name);
+				TSPlayer.All.SendInfoMessage("{0} changed the spawn rate to 600.", args.Player.Name);
 				return;
 			}
 
@@ -3446,7 +3427,7 @@ namespace TShockAPI
 			}
 
 			TShock.Config.DefaultSpawnRate = NPC.defaultSpawnRate = spawnRate;
-			TSPlayer.All.SendInfoMessage("{0} changed the spawn rate to {1}.", args.Player.TPlayer.name, spawnRate);
+			TSPlayer.All.SendInfoMessage("{0} changed the spawn rate to {1}.", args.Player.Name, spawnRate);
 		}
 
 		#endregion Server Config Commands
@@ -3470,19 +3451,19 @@ namespace TShockAPI
 			{
 				case "day":
 					TSPlayer.Server.SetTime(true, 0.0);
-					TSPlayer.All.SendInfoMessage("{0} set the time to 4:30.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} set the time to 4:30.", args.Player.Name);
 					break;
 				case "night":
 					TSPlayer.Server.SetTime(false, 0.0);
-					TSPlayer.All.SendInfoMessage("{0} set the time to 19:30.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} set the time to 19:30.", args.Player.Name);
 					break;
 				case "noon":
 					TSPlayer.Server.SetTime(true, 27000.0);
-					TSPlayer.All.SendInfoMessage("{0} set the time to 12:00.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} set the time to 12:00.", args.Player.Name);
 					break;
 				case "midnight":
 					TSPlayer.Server.SetTime(false, 16200.0);
-					TSPlayer.All.SendInfoMessage("{0} set the time to 0:00.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} set the time to 0:00.", args.Player.Name);
 					break;
 				default:
 					string[] array = args.Parameters[0].Split(':');
@@ -3509,7 +3490,7 @@ namespace TShockAPI
 						TSPlayer.Server.SetTime(false, (double)((time - 15.00m) * 3600.0m));
 					else
 						TSPlayer.Server.SetTime(true, (double)(time * 3600.0m));
-					TSPlayer.All.SendInfoMessage("{0} set the time to {1}:{2:D2}.", args.Player.TPlayer.name, hours, minutes);
+					TSPlayer.All.SendInfoMessage("{0} set the time to {1}:{2:D2}.", args.Player.Name, hours, minutes);
 					break;
 			}
 		}
@@ -3518,7 +3499,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /rain <stop/start>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /rain <stop/start>");
 				return;
 			}
 
@@ -3526,14 +3507,14 @@ namespace TShockAPI
 			{
 				case "start":
 					Main.StartRain();
-					TSPlayer.All.SendInfoMessage("{0} caused it to rain.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} caused it to rain.", args.Player.Name);
 					break;
 				case "stop":
 					Main.StopRain();
-					TSPlayer.All.SendInfoMessage("{0} ended the downpour.", args.Player.TPlayer.name);
+					TSPlayer.All.SendInfoMessage("{0} ended the downpour.", args.Player.Name);
 					break;
 				default:
-					args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /rain <stop/start>");
+					args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /rain <stop/start>");
 					break;
 
 			}
@@ -3543,7 +3524,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1 || args.Parameters.Count > 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /slap <player> [damage]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /slap <player> [damage]");
 				return;
 			}
 			if (args.Parameters[0].Length == 0)
@@ -3575,8 +3556,8 @@ namespace TShockAPI
 					damage = TShock.Utils.Clamp(damage, 15, 0);
 				}
 				plr.DamagePlayer(damage);
-				TSPlayer.All.SendInfoMessage("{0} slapped {1} for {2} damage.", args.Player.TPlayer.name, plr.Name, damage);
-				Log.Info("{0} slapped {1} for {2} damage.", args.Player.TPlayer.name, plr.Name, damage);
+				TSPlayer.All.SendInfoMessage("{0} slapped {1} for {2} damage.", args.Player.Name, plr.Name, damage);
+				Log.Info("{0} slapped {1} for {2} damage.", args.Player.Name, plr.Name, damage);
 			}
 		}
 
@@ -3584,7 +3565,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /wind <speed>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /wind <speed>");
 				return;
 			}
 
@@ -3599,7 +3580,7 @@ namespace TShockAPI
 			Main.windSpeedSet = speed;
 			Main.windSpeedSpeed = 0f;
 			TSPlayer.All.SendData(PacketTypes.WorldInfo);
-			TSPlayer.All.SendInfoMessage("{0} changed the wind speed to {1}.", args.Player.TPlayer.name, speed);
+			TSPlayer.All.SendInfoMessage("{0} changed the wind speed to {1}.", args.Player.Name, speed);
 		}
 
 		#endregion Time/PvpFun Commands
@@ -3636,7 +3617,7 @@ namespace TShockAPI
 						}
 						else
 						{
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region set <1/2>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region set <1/2>", Color.Red);
 						}
 						break;
 					}
@@ -3670,7 +3651,7 @@ namespace TShockAPI
 							}
 						}
 						else
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region define <name>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region define <name>", Color.Red);
 						break;
 					}
 				case "protect":
@@ -3693,10 +3674,10 @@ namespace TShockAPI
 									args.Player.SendMessage("Could not find specified region", Color.Red);
 							}
 							else
-								args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region protect <name> <true/false>", Color.Red);
+								args.Player.SendMessage("Invalid syntax! Proper syntax: /region protect <name> <true/false>", Color.Red);
 						}
 						else
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region protect <name> <true/false>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region protect <name> <true/false>", Color.Red);
 						break;
 					}
 				case "delete":
@@ -3712,7 +3693,7 @@ namespace TShockAPI
 								args.Player.SendErrorMessage("Could not find the specified region!");
 						}
 						else
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region delete <name>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /region delete <name>");
 						break;
 					}
 				case "clear":
@@ -3756,7 +3737,7 @@ namespace TShockAPI
 							}
 						}
 						else
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region allow <name> <region>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region allow <name> <region>", Color.Red);
 						break;
 					}
 				case "remove":
@@ -3791,7 +3772,7 @@ namespace TShockAPI
 						}
 					}
 					else
-						args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region remove <name> <region>", Color.Red);
+						args.Player.SendMessage("Invalid syntax! Proper syntax: /region remove <name> <region>", Color.Red);
 					break;
 				case "allowg":
 					{
@@ -3826,7 +3807,7 @@ namespace TShockAPI
 							}
 						}
 						else
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region allowg <group> <region>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region allowg <group> <region>", Color.Red);
 						break;
 					}
 				case "removeg":
@@ -3861,7 +3842,7 @@ namespace TShockAPI
 						}
 					}
 					else
-						args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region removeg <group> <region>", Color.Red);
+						args.Player.SendMessage("Invalid syntax! Proper syntax: /region removeg <group> <region>", Color.Red);
 					break;
 				case "list":
 					{
@@ -3885,7 +3866,7 @@ namespace TShockAPI
 					{
 						if (args.Parameters.Count == 1 || args.Parameters.Count > 4)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region info <region> [-d] [page]");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /region info <region> [-d] [page]");
 							break;
 						}
 
@@ -4009,10 +3990,10 @@ namespace TShockAPI
 									args.Player.SendMessage("Could not find specified region", Color.Red);
 							}
 							else
-								args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region z <name> <#>", Color.Red);
+								args.Player.SendMessage("Invalid syntax! Proper syntax: /region z <name> <#>", Color.Red);
 						}
 						else
-							args.Player.SendMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region z <name> <#>", Color.Red);
+							args.Player.SendMessage("Invalid syntax! Proper syntax: /region z <name> <#>", Color.Red);
 						break;
 					}
 				case "resize":
@@ -4061,10 +4042,10 @@ namespace TShockAPI
 								TShock.Regions.Reload();
 							}
 							else
-								args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region resize <region> <u/d/l/r> <amount>");
+								args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /region resize <region> <u/d/l/r> <amount>");
 						}
 						else
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region resize <region> <u/d/l/r> <amount>");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /region resize <region> <u/d/l/r> <amount>");
 						break;
 					}
 				case "tp":
@@ -4076,7 +4057,7 @@ namespace TShockAPI
 						}
 						if (args.Parameters.Count <= 1)
 						{
-							args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /region tp <region>.");
+							args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /region tp <region>.");
 							break;
 						}
 
@@ -4157,7 +4138,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count > 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /help <command/page>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /help <command/page>");
 				return;
 			}
 
@@ -4326,20 +4307,20 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count == 0)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /me <text>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /me <text>");
 				return;
 			}
 			if (args.Player.mute)
 				args.Player.SendErrorMessage("You are muted.");
 			else
-				TSPlayer.All.SendMessage(string.Format("*{0} {1}", args.Player.TPlayer.name, String.Join(" ", args.Parameters)), 205, 133, 63);
+				TSPlayer.All.SendMessage(string.Format("*{0} {1}", args.Player.Name, String.Join(" ", args.Parameters)), 205, 133, 63);
 		}
 
 		private static void PartyChat(CommandArgs args)
 		{
 			if (args.Parameters.Count == 0)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /p <team chat text>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /p <team chat text>");
 				return;
 			}
 			int playerTeam = args.Player.Team;
@@ -4348,7 +4329,7 @@ namespace TShockAPI
 				args.Player.SendErrorMessage("You are muted.");
 			else if (playerTeam != 0)
 			{
-				string msg = string.Format("<{0}> {1}", args.Player.TPlayer.name, String.Join(" ", args.Parameters));
+				string msg = string.Format("<{0}> {1}", args.Player.Name, String.Join(" ", args.Parameters));
 				foreach (TSPlayer player in TShock.Players)
 				{
 					if (player != null && player.Active && player.Team == playerTeam)
@@ -4363,7 +4344,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /mute <player> [reason]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /mute <player> [reason]");
 				return;
 			}
 
@@ -4384,7 +4365,7 @@ namespace TShockAPI
 			{
 				var plr = players[0];
 				plr.mute = false;
-				TSPlayer.All.SendInfoMessage("{0} has been unmuted by {1}.", plr.Name, args.Player.TPlayer.name);
+				TSPlayer.All.SendInfoMessage("{0} has been unmuted by {1}.", plr.Name, args.Player.Name);
 			}
 			else
 			{
@@ -4393,7 +4374,7 @@ namespace TShockAPI
 					reason = String.Join(" ", args.Parameters.ToArray(), 1, args.Parameters.Count - 1);
 				var plr = players[0];
 				plr.mute = true;
-				TSPlayer.All.SendInfoMessage("{0} has been muted by {1} for {2}.", plr.Name, args.Player.TPlayer.name, reason);
+				TSPlayer.All.SendInfoMessage("{0} has been muted by {1} for {2}.", plr.Name, args.Player.Name, reason);
 			}
 		}
 
@@ -4411,7 +4392,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /whisper <player> <text>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /whisper <player> <text>");
 				return;
 			}
 
@@ -4432,7 +4413,7 @@ namespace TShockAPI
 			{
 				var plr = players[0];
 				var msg = string.Join(" ", args.Parameters.ToArray(), 1, args.Parameters.Count - 1);
-				plr.SendMessage(String.Format("<From {0}> {1}", args.Player.TPlayer.name, msg), Color.MediumPurple);
+				plr.SendMessage(String.Format("<From {0}> {1}", args.Player.Name, msg), Color.MediumPurple);
 				args.Player.SendMessage(String.Format("<To {0}> {1}", plr.Name, msg), Color.MediumPurple);
 				plr.LastWhisper = args.Player;
 				args.Player.LastWhisper = plr;
@@ -4448,7 +4429,7 @@ namespace TShockAPI
 			else if (args.Player.LastWhisper != null)
 			{
 				var msg = string.Join(" ", args.Parameters);
-				args.Player.LastWhisper.SendMessage(String.Format("<From {0}> {1}", args.Player.TPlayer.name, msg), Color.MediumPurple);
+				args.Player.LastWhisper.SendMessage(String.Format("<From {0}> {1}", args.Player.Name, msg), Color.MediumPurple);
 				args.Player.SendMessage(String.Format("<To {0}> {1}", args.Player.LastWhisper.Name, msg), Color.MediumPurple);
 			}
 			else
@@ -4461,7 +4442,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /annoy <player> <seconds to annoy>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /annoy <player> <seconds to annoy>");
 				return;
 			}
 			int annoy = 5;
@@ -4484,7 +4465,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /confuse <player>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /confuse <player>");
 				return;
 			}
 			var players = TShock.Utils.FindPlayer(args.Parameters[0]);
@@ -4504,7 +4485,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /rocket <player>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /rocket <player>");
 				return;
 			}
 			var players = TShock.Utils.FindPlayer(args.Parameters[0]);
@@ -4533,7 +4514,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /firework <player> [red|green|blue|yellow]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /firework <player> [red|green|blue|yellow]");
 				return;
 			}
 			var players = TShock.Utils.FindPlayer(args.Parameters[0]);
@@ -4564,7 +4545,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /aliases <command or alias>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /aliases <command or alias>");
 				return;
 			}
 			
@@ -4603,7 +4584,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1 && args.Parameters.Count != 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /clear <item/npc/projectile> [radius]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /clear <item/npc/projectile> [radius]");
 				return;
 			}
 
@@ -4689,7 +4670,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /kill <player>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /kill <player>");
 				return;
 			}
 
@@ -4708,7 +4689,7 @@ namespace TShockAPI
 				var plr = players[0];
 				plr.DamagePlayer(999999);
 				args.Player.SendSuccessMessage(string.Format("You just killed {0}!", plr.Name));
-				plr.SendErrorMessage(string.Format("{0} just killed you!", args.Player.TPlayer.name));
+				plr.SendErrorMessage(string.Format("{0} just killed you!", args.Player.Name));
 			}
 		}
 
@@ -4716,7 +4697,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count > 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /butcher [mob type]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /butcher [mob type]");
 				return;
 			}
 
@@ -4750,14 +4731,14 @@ namespace TShockAPI
 					kills++;
 				}
 			}
-			TSPlayer.All.SendInfoMessage("{0} butchered {1} NPCs.", args.Player.TPlayer.name, kills);
+			TSPlayer.All.SendInfoMessage("{0} butchered {1} NPCs.", args.Player.Name, kills);
 		}
 		
 		private static void Item(CommandArgs args)
 		{
 			if (args.Parameters.Count < 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /item <item name/id> [item amount] [prefix id/name]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /item <item name/id> [item amount] [prefix id/name]");
 				return;
 			}
 
@@ -4856,7 +4837,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /renameNPC <guide, nurse, etc.> <newname>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /renameNPC <guide, nurse, etc.> <newname>");
 				return;
 			}
 			int npcId = 0;
@@ -4895,7 +4876,7 @@ namespace TShockAPI
 			}
 			if (done >0 )
 			{
-			TSPlayer.All.SendInfoMessage("{0} renamed the {1}.", args.Player.TPlayer.name, args.Parameters[0]);
+			TSPlayer.All.SendInfoMessage("{0} renamed the {1}.", args.Player.Name, args.Parameters[0]);
 			}
 			else
 			{
@@ -4908,7 +4889,7 @@ namespace TShockAPI
 			if (args.Parameters.Count < 2)
 			{
 				args.Player.SendErrorMessage(
-					"잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /give <item type/id> <player> [item amount] [prefix id/name]");
+					"Invalid syntax! Proper syntax: /give <item type/id> <player> [item amount] [prefix id/name]");
 				return;
 			}
 			if (args.Parameters[0].Length == 0)
@@ -4977,7 +4958,7 @@ namespace TShockAPI
 							if (plr.GiveItemCheck(item.type, item.name, item.width, item.height, itemAmount, prefix))
 							{
 								args.Player.SendSuccessMessage(string.Format("Gave {0} {1} {2}(s).", plr.Name, itemAmount, item.name));
-								plr.SendSuccessMessage(string.Format("{0} gave you {1} {2}(s).", args.Player.TPlayer.name, itemAmount, item.name));
+								plr.SendSuccessMessage(string.Format("{0} gave you {1} {2}(s).", args.Player.Name, itemAmount, item.name));
 							}
 							else
 							{
@@ -5038,7 +5019,7 @@ namespace TShockAPI
 			else
 			{
 				args.Player.SendSuccessMessage(string.Format("You just healed {0}", playerToHeal.Name));
-				playerToHeal.SendSuccessMessage(string.Format("{0} just healed you!", args.Player.TPlayer.name));
+				playerToHeal.SendSuccessMessage(string.Format("{0} just healed you!", args.Player.Name));
 			}
 		}
 
@@ -5046,7 +5027,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 1 || args.Parameters.Count > 2)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /buff <buff id/name> [time(seconds)]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /buff <buff id/name> [time(seconds)]");
 				return;
 			}
 			int id = 0;
@@ -5084,7 +5065,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count < 2 || args.Parameters.Count > 3)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /gbuff <player> <buff id/name> [time(seconds)]");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /gbuff <player> <buff id/name> [time(seconds)]");
 				return;
 			}
 			int id = 0;
@@ -5128,7 +5109,7 @@ namespace TShockAPI
 														  foundplr[0].Name, TShock.Utils.GetBuffName(id),
 														  TShock.Utils.GetBuffDescription(id), (time)));
 					foundplr[0].SendSuccessMessage(string.Format("{0} has buffed you with {1}({2}) for {3} seconds!",
-														  args.Player.TPlayer.name, TShock.Utils.GetBuffName(id),
+														  args.Player.Name, TShock.Utils.GetBuffName(id),
 														  TShock.Utils.GetBuffDescription(id), (time)));
 				}
 				else
@@ -5140,7 +5121,7 @@ namespace TShockAPI
 		{
 			if (args.Parameters.Count != 1)
 			{
-				args.Player.SendErrorMessage("잘못된 문자열이 있습니다. 다음과 같이 해주시기 바랍니다. /grow <tree/epictree/mushroom/cactus/herb>");
+				args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /grow <tree/epictree/mushroom/cactus/herb>");
 				return;
 			}
 			var name = "Fail";
