@@ -34,7 +34,7 @@ namespace TShockAPI.DB
 		{
 			database = db;
 
-			var table = new SqlTable("Users",
+			var table = new SqlTable("ss_tsUsers",
 			                         new SqlColumn("ID", MySqlDbType.Int32) {Primary = true, AutoIncrement = true},
 			                         new SqlColumn("Username", MySqlDbType.VarChar, 32) {Unique = true},
 			                         new SqlColumn("Password", MySqlDbType.VarChar, 128),
@@ -63,7 +63,7 @@ namespace TShockAPI.DB
 			int ret;
 			try
 			{
-				ret = database.Query("INSERT INTO Users (Username, Password, UUID, UserGroup, Registered) VALUES (@0, @1, @2, @3, @4);", user.Name,
+				ret = database.Query("INSERT INTO ss_tsUsers (Username, Password, UUID, UserGroup, Registered) VALUES (@0, @1, @2, @3, @4);", user.Name,
 								   TShock.Utils.HashPassword(user.Password), user.UUID, user.Group, DateTime.UtcNow.ToString("s"));
 			}
 			catch (Exception ex)
@@ -89,7 +89,7 @@ namespace TShockAPI.DB
 			try
 			{
 				var tempuser = GetUser(user);
-				int affected = database.Query("DELETE FROM Users WHERE Username=@0", user.Name);
+				int affected = database.Query("DELETE FROM ss_tsUsers WHERE Username=@0", user.Name);
 
 				if (affected < 1)
 					throw new UserNotExistException(user.Name);
@@ -112,7 +112,7 @@ namespace TShockAPI.DB
 			try
 			{
 				if (
-					database.Query("UPDATE Users SET Password = @0 WHERE Username = @1;", TShock.Utils.HashPassword(password),
+					database.Query("UPDATE ss_tsUsers SET Password = @0 WHERE Username = @1;", TShock.Utils.HashPassword(password),
 					               user.Name) == 0)
 					throw new UserNotExistException(user.Name);
 			}
@@ -132,7 +132,7 @@ namespace TShockAPI.DB
 			try
 			{
 				if (
-					database.Query("UPDATE Users SET UUID = @0 WHERE Username = @1;", uuid,
+					database.Query("UPDATE ss_tsUsers SET UUID = @0 WHERE Username = @1;", uuid,
 								   user.Name) == 0)
 					throw new UserNotExistException(user.Name);
 			}
@@ -155,7 +155,7 @@ namespace TShockAPI.DB
 				if (null == grp)
 					throw new GroupNotExistsException(group);
 
-				if (database.Query("UPDATE Users SET UserGroup = @0 WHERE Username = @1;", group, user.Name) == 0)
+				if (database.Query("UPDATE ss_tsUsers SET UserGroup = @0 WHERE Username = @1;", group, user.Name) == 0)
 					throw new UserNotExistException(user.Name);
 				
 				// Update player group reference for any logged in player
@@ -174,7 +174,7 @@ namespace TShockAPI.DB
 	    {
             try
             {
-                if (database.Query("UPDATE Users SET LastAccessed = @0, KnownIps = @1 WHERE Username = @2;", DateTime.UtcNow.ToString("s"), user.KnownIps, user.Name) == 0)
+                if (database.Query("UPDATE ss_tsUsers SET LastAccessed = @0, KnownIps = @1 WHERE Username = @2;", DateTime.UtcNow.ToString("s"), user.KnownIps, user.Name) == 0)
                     throw new UserNotExistException(user.Name);
             }
             catch (Exception ex)
@@ -187,7 +187,7 @@ namespace TShockAPI.DB
 		{
 			try
 			{
-				using (var reader = database.QueryReader("SELECT * FROM Users WHERE Username=@0", username))
+				using (var reader = database.QueryReader("SELECT * FROM ss_tsUsers WHERE Username=@0", username))
 				{
 					if (reader.Read())
 					{
@@ -234,13 +234,13 @@ namespace TShockAPI.DB
 			object arg;
 			if (0 != user.ID)
 			{
-				query = "SELECT * FROM Users WHERE ID=@0";
+				query = "SELECT * FROM ss_tsUsers WHERE ID=@0";
 				arg = user.ID;
 				type = "id";
 			}
 			else
 			{
-				query = "SELECT * FROM Users WHERE Username=@0";
+				query = "SELECT * FROM ss_tsUsers WHERE Username=@0";
 				arg = user.Name;
 				type = "name";
 			}
@@ -274,7 +274,7 @@ namespace TShockAPI.DB
 			try
 			{
 				List<User> users = new List<User>();
-				using (var reader = database.QueryReader("SELECT * FROM Users"))
+				using (var reader = database.QueryReader("SELECT * FROM ss_tsUsers"))
 				{
 					while (reader.Read())
 					{
@@ -302,6 +302,20 @@ namespace TShockAPI.DB
             user.KnownIps = result.Get<string>("KnownIps");
 			return user;
 		}
+
+        //for WillowsLAB TShock Tools
+
+        public bool GetUserByNameforTEST(User user)
+        {
+            try
+            {
+
+            }
+            catch
+            {
+
+            }
+        }
 	}
 
 	public class User
