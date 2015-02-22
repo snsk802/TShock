@@ -25,6 +25,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Net;
 using System.Reflection;
 using MaxMind;
@@ -67,6 +68,8 @@ namespace TShockAPI
 		public static TileManager TileBans;
 		public static RememberedPosManager RememberedPos;
 		public static CharacterManager CharacterDB;
+		public static isLogged isLogged;
+		public static NickName NickName;
 		public static ConfigFile Config { get; set; }
 		public static ServerSideConfig ServerSideCharacterConfig;
 		public static IDbConnection DB;
