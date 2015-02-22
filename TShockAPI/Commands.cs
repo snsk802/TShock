@@ -1994,13 +1994,13 @@ namespace TShockAPI
 		private static void Home(CommandArgs args)
 		{
 			args.Player.Spawn();
-			args.Player.SendSuccessMessage("Teleported to your spawnpoint.");
+			args.Player.SendSuccessMessage("본인의 부활 지점으로 이동했습니다.");
 		}
 
 		private static void Spawn(CommandArgs args)
 		{
 			if (args.Player.Teleport(Main.spawnTileX*16, (Main.spawnTileY*16) -48))
-				args.Player.SendSuccessMessage("Teleported to the map's spawnpoint.");
+				args.Player.SendSuccessMessage("맵의 기본 부활 지점으로 이동했습니다.");
 		}
 
 		private static void TP(CommandArgs args)
