@@ -1049,9 +1049,18 @@ namespace TShockAPI
 			if (tsplr != null && tsplr.ReceivedInfo)
 			{
 				if (!tsplr.SilentKickInProgress && tsplr.State >= 3)
-					Utils.Broadcast(tsplr.Name + " has left.", Color.Yellow);
-				Log.Info(string.Format("{0} disconnected.", tsplr.Name));
-
+		{
+			if (TShock.Users.changeLogged(tsplr.UserID,tsplr.Name,false))
+			{
+				isLogged.LoggedOut(tsplr.UserID);
+			Utils.Broadcast("<SYSTEM> " + tsplr.Name + TSKoreanEndParse(tsplr.Name, 2) + " 접속을 종료했습니다.", 255, 128, 128);
+			}
+			
+		}		
+		Log.Info(string.Format("{0} disconnected", tsplr.Name));
+		
+		
+		
 				if (tsplr.IsLoggedIn && !tsplr.IgnoreActionsForClearingTrashCan && Main.ServerSideCharacter && (!tsplr.Dead || tsplr.TPlayer.difficulty != 2))
 				{
 					tsplr.PlayerData.CopyCharacter(tsplr);
@@ -1064,9 +1073,44 @@ namespace TShockAPI
 				}
 			}
 		}
+	public static string TSKoreanEndParse(string str, int mode)
+	{
+		str = str.Trim();
+		if (str.Length <= 0)
+		{
+			str = "각";
+		}
+		string rtns = "";
+		char [] check = str.ToCharArray();
+		int Wlab_LANG = Convert.ToInt32(check[str.Length - 1]) - 44032; // 0xAC00
+		if (Wlab_LANG < 0)
+		{
+			Wlab_LANG = 1;
+			int tmp = Convert.ToInt32(check[str.Length - 1]);
+			if (tmp == 65 || tmp == 69 || tmp == 73 || tmp == 79 || tmp == 85 || tmp == 97 || tmp == 101 || tmp == 105 || tmp == 111 || tmp == 117) 
+                Wlab_LANG = 0; 
 
+		}
+		
+		if (0 == (Wlab_LANG % 28))
+		{
+			if (mode == 0) rtns = "는";
+			else if (mode == 1) rtns = "를";
+			else if (mode == 2) rtns = "가";
+			else if (mode == 3) rtns = "로";
+		}
+		else
+		{
+			if (mode == 0) rtns = "은";
+			else if (mode == 1) rtns = "을";
+			else if (mode == 2) rtns = "이";
+			else if (mode == 3) rtns = "으로";
+		}
+		return rtns;
+	}
 		private void OnChat(ServerChatEventArgs args)
 		{
+	NickName.titleprefixload();
 			if (args.Handled)
 				return;
 
@@ -1114,34 +1158,79 @@ namespace TShockAPI
 					args.Handled = true;
 				}
 				else if (!TShock.Config.EnableChatAboveHeads)
-				{
-					var text = String.Format(Config.ChatFormat, tsplr.Group.Name, tsplr.Group.Prefix, tsplr.Name, tsplr.Group.Suffix,
-					                         args.Text);
-					Hooks.PlayerHooks.OnPlayerChat(tsplr, args.Text, ref text);
-					Utils.Broadcast(text, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
+		{
+			
+			string nickname = tsplr.Name;
+			var text = NickName.getPrefix(tsplr.UserID) + NickName.getTitle(tsplr.UserID) + nickname + " : " + args.Text; 
+		
+			if (tsplr.Group.Name == "superadmin")
+			{
+				nickname = "GM" + nickname;
+			}
+			
+			Hooks.PlayerHooks.OnPlayerChat(tsplr, args.Text, ref text);
+			
+			int[] rgb = calcRGB(tsplr,Name);
+			
+			Utils.Broadcast(text, (byte)rgb[0], (byte)rgb[1], (byte)rgb[2]);
+
 					args.Handled = true;
 				}
 				else
-				{
-					Player ply = Main.player[args.Who];
-					string name = ply.name;
-					ply.name = String.Format(Config.ChatAboveHeadsFormat, tsplr.Group.Name, tsplr.Group.Prefix, tsplr.Name, tsplr.Group.Suffix);
-					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, ply.name, args.Who, 0, 0, 0, 0);
-					ply.name = name;
-					var text = args.Text;
-					Hooks.PlayerHooks.OnPlayerChat(tsplr, args.Text, ref text);
-					NetMessage.SendData((int)PacketTypes.ChatText, -1, args.Who, text, args.Who, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
-					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, name, args.Who, 0, 0, 0, 0);
-
-					string msg = String.Format("<{0}> {1}",
-						String.Format(Config.ChatAboveHeadsFormat, tsplr.Group.Name, tsplr.Group.Prefix, tsplr.Name, tsplr.Group.Suffix),
-						text);
-
-					tsplr.SendMessage(msg, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
-
-					TSPlayer.Server.SendMessage(msg, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
-					Log.Info(string.Format("Broadcast: {0}", msg));
-					args.Handled = true;
+		{
+			try
+			{
+				/* WillowsLAB 전용 */
+				int[] rgb = calcRGB(tsplr.Name);
+				//Setting Nickname Color
+				tsplr.Group.R = (byte)rgb[0];
+				tsplr.Group.G = (byte)rgb[1];
+				tsplr.Group.B = (byte)rgb[2];
+				
+				//act A
+				Player ply = Main.player[args.Who];
+				string name = ply.name;
+				string prefix = tsplr.prefix;
+				string title = tsplr.title;
+				
+				NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, "LOCAL", args.Who, 0, 0, 0, 0);
+				string nickname = prefix + title + tsplr.Name;
+				
+				var text = nickname + " : " + args.Text;
+				Hooks.PlayerHooks.OnPlayerChat(tsplr, args.Text, ref text);
+				
+				//Send Prefix Data
+				
+				//Sending AboveHead
+				NetMessage.SendData((int)PacketTypes.ChatText, -1, args.Who, text, args.Who, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
+				NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, name, args.Who, 0, 0, 0, 0);
+			
+				string msg "<LOCAL> " + nickname + " : " + args.Text;
+				
+				tsplr.SendMessage(msg, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
+				TSPlayer.Server.SendMessage(msg, tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
+				
+				//broadcasting Console
+				Log.Info(string.Format("Broadcast: {0}", text));
+				args.Handled = true;
+				
+			}
+			catch
+			{
+				int[] rgb = calcRGB(tsplr.Name);
+				
+				//Setting Nickname Color
+				tsplr.Group.R = (byte)rgb[0];
+				tsplr.Group.G = (byte)rgb[1];
+				tsplr.Group.B = (byte)rgb[2];
+				
+				Console.WriteLine(ex.GetBaseException().ToString());
+				var text = String.Format(Config.ChatFormat, tsplr.Group.Name, tsplr.Group.Prefix, tsplr.Name, tsplr.Group.Suffix, args.Text);
+				Hooks.PlayerHooks.OnPlayerChat(tsplr, args.Text, ref text);
+				
+				Utils.Broadcast(text, (byte)rgb[0], (byte)rgb[1], (byte)rgb[2]);
+				args.Handled = true;
+			}
 				}
 			}
 		}
